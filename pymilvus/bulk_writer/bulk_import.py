@@ -9,11 +9,12 @@
 # is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
 # or implied. See the License for the specific language governing permissions and limitations under
 # the License.
-
+import json
 import logging
 from typing import Optional
 
 import requests
+from requests import Response
 
 from pymilvus.exceptions import MilvusException
 
@@ -28,6 +29,7 @@ def _http_headers():
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Encodin": "gzip,deflate,sdch",
         "Accept-Languag": "en-US,en;q=0.5",
+        "Authorization":"Bearer d77c54046e9eb287247b314de587378e8e5a29839b5e02539d32e494a265228940d6b8179bf15a5538825c61561d5301b4c8929e"
     }
 
 
@@ -39,9 +41,10 @@ def _throw(msg: str):
 def _post_request(url: str, params: {}, timeout: int = 20, **kwargs):
     try:
         resp = requests.post(
-            url=url, headers=_http_headers(), data=params, timeout=timeout, **kwargs
+            url=url, headers=_http_headers(), json=params, timeout=timeout, **kwargs
         )
-        if resp.status_code < 200 or resp.status_code >= 300:
+        print(resp)
+        if resp.status_code != 200 :
             _throw(f"Failed to post url: {url}, status code: {resp.status_code}")
         else:
             return resp
@@ -70,7 +73,7 @@ def bulk_insert(
     secret_key: str,
     cluster_id: str,
     collection_name: str,
-    partition_name: Optional[str] = None,
+    # partition_name: Optional[str] = None,
     **kwargs,
 ):
     """call bulkinsert restful interface to import files
@@ -92,15 +95,13 @@ def bulk_insert(
         "accessKey": access_key,
         "secretKey": secret_key,
         "clusterId": cluster_id,
-        "collectionName": collection_name,
-        "partitionName": partition_name,
+        "collectionName": collection_name
+        # ,"partitionName": partition_name,
     }
 
     resp = _post_request(url=url, params=params, **kwargs)
     res = resp.json()
-    if "jobID" not in res:
-        msg = "Illegal result from bulkinsert call: no job id"
-        raise MilvusException(message=msg)
+    process_response(url, res)
     return res
 
 
@@ -116,12 +117,14 @@ def get_job_progress(url: str, job_id: str, cluster_id: str, **kwargs):
         json: response of the restful interface
     """
     params = {
-        "jobID": job_id,
+        "jobId": job_id,
         "clusterId": cluster_id,
     }
 
     resp = _get_request(url=url, params=params, **kwargs)
-    return resp.json()
+    res = resp.json()
+    process_response(url, res)
+    return res
 
 
 def list_jobs(url: str, cluster_id: str, page_size: int, current_page: int, **kwargs):
@@ -143,4 +146,13 @@ def list_jobs(url: str, cluster_id: str, page_size: int, current_page: int, **kw
     }
 
     resp = _get_request(url=url, params=params, **kwargs)
-    return resp.json()
+    res = resp.json()
+    process_response(url, res)
+    return res
+
+
+def process_response(url: str, res: json):
+    innerCode = res["code"]
+    if innerCode != 200:
+        innerErrMsg = res["message"]
+        _throw(f"Failed to post url: {url}, code: {innerCode}, message: {innerErrMsg}")
