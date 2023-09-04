@@ -41,7 +41,7 @@ MINIO_ACCESS_KEY = "minioadmin"
 HOST = '127.0.0.1'
 PORT = '19530'
 
-COLLECTION_NAME = "test_abc"
+COLLECTION_NAME = "MultiFieldCollection"
 DIM = 256
 
 def create_connection():
@@ -147,41 +147,44 @@ def test_remote_writer(schema: CollectionSchema):
 
 
 def test_bulkinsert(data_path: str):
-    url = "xxx"
+    url = "https://controller.api.aws-us-west-2.cloud-sit.zilliz.com/v1/vector/collections/import"
     resp = bulk_insert(
         url=url,
         object_url=data_path,
         access_key="xxx",
         secret_key="xxx",
-        cluster_id="xxx",
+        cluster_id="in01-6e64b4d2870ae54",
         collection_name=COLLECTION_NAME,
     )
     print(resp)
 
-    id = resp['jobId']
+    id = resp['data']['jobId']
+    url = "https://controller.api.aws-us-west-2.cloud-sit.zilliz.com/v1/vector/collections/import/get"
     resp = get_job_progress(
         url=url,
         job_id=id,
-        cluster_id="xxx",
+        cluster_id="in01-6e64b4d2870ae54",
     )
     print(resp)
 
+    url = "https://controller.api.aws-us-west-2.cloud-sit.zilliz.com/v1/vector/collections/import/list"
     resp = list_jobs(
         url=url,
-        cluster_id="xxx",
+        cluster_id="in01-6e64b4d2870ae54",
         page_size=10,
+        current_page=1
     )
     print(resp)
 
 
 if __name__ == '__main__':
-    create_connection()
-    schema = build_collection()
-
-    test_local_writer_json(schema)
-    test_local_writer_npy(schema)
-    test_parallel_append(schema)
-
-    data_path = test_remote_writer(schema)
-    test_bulkinsert(data_path)
+    # create_connection()
+    # schema = build_collection()
+    #
+    # test_local_writer_json(schema)
+    # test_local_writer_npy(schema)
+    # test_parallel_append(schema)
+    #
+    # data_path = test_remote_writer(schema)
+    test_bulkinsert("https://zilliz-aws-vdc-global-sit-us-west-2.s3.us-west-2.amazonaws.com/dataSet/Import/MultiFieldCollection/npy/multi/normal/")
 
